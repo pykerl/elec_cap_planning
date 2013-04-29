@@ -78,3 +78,21 @@ Thread count was 2 (of 2 available processors)
 
 Optimal solution found (tolerance 1.00e-04)
 Best objective 7.020890000000e+05, best bound 7.020720065359e+05, gap 0.0024%
+Optimize a model with 0 rows, 7500 columns and 0 nonzeros
+Presolve removed 0 rows and 7500 columns
+Presolve time: 0.00s
+Presolve: All rows and columns removed
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0    0.0000000e+00   0.000000e+00   0.000000e+00      0s
+
+Solved in 0 iterations and 0.00 seconds
+Optimal objective  0.000000000e+00
+Optimize a model with 0 rows, 7500 columns and 0 nonzeros
+Presolve removed 0 rows and 7500 columns
+Presolve time: 0.00s
+Presolve: All rows and columns removed
+Iteration    Objective       Primal Inf.    Dual Inf.      Time
+       0    0.0000000e+00   0.000000e+00   0.000000e+00      0s
+
+Solved in 0 iterations and 0.01 seconds
+Optimal objective  0.000000000e+00
