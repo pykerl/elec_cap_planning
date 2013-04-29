@@ -12,25 +12,12 @@ from gurobipy import *
 #import matplotlib.pyplot as plt
 from pylab import *
 import random
+import csv
 
-#########  input data  #########
+#####################################
+#########  input data  ##############
+#####################################
 
-#power plants
-
-
-#start up costs
-
-
-#shut down costs
-
-
-#variable costs
-
-
-#date and hourly demand
-
-
-#emissions inventory data
 
 
 #####################################
@@ -43,6 +30,7 @@ class AQSensitivity:
         self.grid = grid
         self.sensitivity = sensitivity
     def __str__(self):
+        return ""
 #TODO
 
 ######     Range   ##########
@@ -50,10 +38,8 @@ class Range:
     def __init__(self, start, end):
         self.start = start
         self.end = end
-
     def length(self):
         return self.end - self.start
-
     def overlaps(self, other):
         return not(self.end < other.start or other.end < self.start)
 
@@ -63,9 +49,7 @@ class GridSquare:
         self.lat_range = lat_range;
         self.long_range = long_range;
     def __str__(self):
-        return "Lat: (%s,%s) Long: (%s,%s)"
-            % (self.lat_range.start,self.lat_range.end,
-               self.long_range.start,self.long_rang.end)
+        return "Lat: (%s,%s) Long: (%s,%s)" % (self.lat_range.start,self.lat_range.end, self.long_range.start,self.long_rang.end)
 
 ########    Load Curve   ########
 class LoadCurve:
@@ -120,15 +104,6 @@ class PowerPlant:
         return "%s \n\t Type: %s \n\t Cap Factor: %s \n\t Capacity (MW): %s \n\t Minimum Gen (MW): %s \n\t %s \n\t %s" % (self.name, self.type, self.cap_factor, self.capacity, self.min_p, self.location, self.costs)
 
 
-########    power plant types dictionary   ########
-pp_types = {0 : 'coal',
-            1 : 'oil',
-            2 : 'hydro',
-            3 : 'nuclear',
-            4 : 'gas',
-            5 : 'biomass'}
-############other sub-types required here!!!!#########
-
 
 ######################################################
 ######################################################
@@ -177,14 +152,8 @@ lc = LoadCurve(load,date)
 
 
 ######################################################
-######################################################
 #######  END FAKE DATA CREATION FOR TESTING    #######
 ######################################################
-######################################################
-
-#other data needed
-num_hours = 24
-hours = list(xrange(num_hours))
 
 
 #########optimize#########
@@ -198,32 +167,45 @@ try:
 
 
     #########  variables  #########
-    x = {}
-    y = {}
-    z = {}
+    #i and
+    x = {} #capacity of plant i in year t
+    y = {} #increased capacity of plant i in year t
+    q = {} #decreased capacity of plant i in year t
+    z = {} #electricity generated at plant i in year t, season s, hour h
 
-    #binary startup of plant i in hour h
-    for h in hours:
-        for i,p in enumerate(pp):
-            x[i,h] = m.addVar(vtype = GRB.BINARY,
-                              obj = p.costs.start_up,
-                              name = 'startup_%s_%s' % (i,h))
-    #binary state of plant i in hour h
-    for h in hours:
-        for i,p in enumerate(pp):
-            y[i,h] = m.addVar(vtype = GRB.BINARY,
-                              obj = 0.0,
-                              name = 'state_%s_%s' % (i,h))
+    #TODO: NEED additional R_t factor for each year
+    #TODO: NEED days per season factor
 
-    #electricity generated at plant i in hour h
-    for h in hours:
+    #capacity of plant i in year t
+    for t in years:
         for i,p in enumerate(pp):
-            z[i,h] = m.addVar(vtype = GRB.CONTINUOUS,
-                              obj = p.costs.fuel_cost,
-                              name = 'gen_%s_%s' % (i,h))
+            x[i,t] = m.addVar(vtype = GRB.CONTINUOUS,
+                              obj = p.costs.fixed_cap,
+                              name = 'capacity_%s_%s' % (i,t))
 
-    #x1 = m.addVar(vtype=GRB.CONTINUOUS, name="x1")
-    #x2 = m.addVar(vtype=GRB.CONTINUOUS, name="x2")
+    #inc capacity of plant i in year t
+    for t in years:
+        for i,p in enumerate(pp):
+            y[i,t] = m.addVar(vtype = GRB.CONTINUOUS,
+                              obj = p.costs.inc_cap,
+                              name = 'inc_capacity_%s_%s' % (i,t))
+
+    #dec capacity of plant i in year t
+    for t in years:
+        for i,p in enumerate(pp):
+            q[i,t] = m.addVar(vtype = GRB.CONTINUOUS,
+                              obj = p.costs.dec_cap,
+                              name = 'dec_capacity_%s_%s' % (i,t))
+
+    #electricity generated at plant i in year t, season s, hour h
+    for t in years:
+        for s in seasons:
+            for h in hours:
+                for i,p in enumerate(pp):
+                    z[i,t,s,h] = m.addVar(vtype = GRB.CONTINUOUS,
+                                      obj = p.costs.fuel_cost_per_mwh,
+                                      name = 'gen_%s_%s_%s_%s' % (i,t,s,h))
+
 
     # Integrate new variables
     m.update()
@@ -231,7 +213,6 @@ try:
     #########  objective  #########
     #objective
     #NOTE: objective set within variable definitions!
-    #m.setObjective(1600 * (x1 + x2), GRB.MINIMIZE)
     m.setAttr(GRB.attr.ModelSense, GRB.MINIMIZE)
 
     #########  constraints  #########

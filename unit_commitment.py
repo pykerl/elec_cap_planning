@@ -10,7 +10,7 @@ from gurobipy import *
 #import matplotlib.pyplot as plt
 from pylab import *
 import random
-
+#import csv
 #########  input data  #########
 
 #power plants
