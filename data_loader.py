@@ -33,8 +33,12 @@ hours = list(xrange(num_hours))
 num_years = 1 #number of years in horizonstarting at year ????
 years = list(xrange(num_years))
 
-num_seasons = 3; #winter, summer, intermediate
+num_seasons = 3 #winter, summer, intermediate
 seasons = list(xrange(num_seasons))
+
+#dummy power plant set
+num_plants = 100
+pp = list(xrange(num_plants))
 
 ######### END CONSTANTS #########
 
