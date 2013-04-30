@@ -152,9 +152,10 @@ for i in range(0, number_plants):
     pp_type = pp_types[random.randint(0,5)] #random type
 
     #costs
-    fixed_cap_cost = 500
-    inc_cap_cost = 10
-    dec_cap_cost = 0
+    #made up costs for now
+    fixed_cap_cost = random.randrange(300,400)
+    inc_cap_cost = random.randrange(5,20)
+    dec_cap_cost = random.randrange(0,5)
     fuel_cost = random.randrange(30,40)
     costs = PowerPlantCosts(fixed_cap_cost,inc_cap_cost,dec_cap_cost,fuel_cost)
 
@@ -249,6 +250,37 @@ try:
     m.setAttr(GRB.attr.ModelSense, GRB.MINIMIZE)
 
     #########  constraints  #########
+
+    #yearly change in capacity balance constraints
+    for t in years:
+        for i,p in enumerate(pp):
+            if(t > 0):
+                m.addConstr(x[i,t] - x[i,(t-1)] == y[i,t] - q[i,t] , "change_cap_%s_%s" % (i,t))
+
+    #demand must be met with available capacity
+    for h in hours:
+        for s in seasons:
+            for t in years:
+                m.addConstr(quicksum([z[i,t,s,h] for i in range(number_plants)]) == lc.load[h], "load_%s_%s_%s" % (h,s,t))
+
+    ##capacity constraints
+    #all plants
+    for t in years:
+        for s in seasons:
+            for h in hours:
+                for i,p in enumerate(pp):
+                        m.addConstr(z[i,t,s,h] <= p.capacity , "plant_cap_%s_%s_%s_%s" % (i,t,s,h))
+
+    #non-wind, non-solar capacity
+
+    #wind capacity
+
+    #solar capacity
+
+    #rewnewable electricity standard
+
+    #non-negativity (implied)
+
 ##
 ##    for h in hours:
 ##        for i,p in enumerate(pp):
@@ -274,58 +306,84 @@ try:
     if m.status != GRB.status.OPTIMAL:
         print 'Relaxation is infeasible'
 
-###   print out all variables > 0
-##    for v in m.getVars():
-##        if v.x > 0.0 :
-##            print "%s\t:\t%.1f " % (v.varName, v.x)
+#   print out all variables > 0
+    for v in m.getVars():
+        if v.x > 0.0 :
+            print "%s\t:\t%.1f " % (v.varName, v.x)
 
     #gather data for each hour, for each power plant type (coal, nuclear, etc...)
-    ##    #inverse the key-value mapping for power plant types
-    ##    inv_pp_types = {v:k for k, v in pp_types.items()}
+        #inverse the key-value mapping for power plant types
+        inv_pp_types = {v:k for k, v in pp_types.items()}
 
-##    load_totals = {}
-##    for h in hours :
-##        for j,t in pp_types.items():
-##            load_totals[h,j] = 0.0
-##
-##    for h in hours :
-##        for i,p in enumerate(pp) :
-##            for j,t in pp_types.items():
-##                if p.type == t :
-##                    load_totals[h,j] += z[i,h].getAttr("X")
-##
+    load_totals = {}
+    for t in years:
+        for s in seasons:
+            for h in hours :
+                for j,k in pp_types.items():
+                    load_totals[j,t,s,h] = 0.0
+
+    #calculate plant load
+    total_plant_load = 0.0
+
+    for t in years:
+        for s in seasons:
+            for h in hours :
+                for i,p in enumerate(pp) :
+                    total_plant_load += z[i,t,s,h].getAttr("X")
+                    for j,k in pp_types.items():
+                        if p.type == k:
+                            load_totals[j,t,s,h] += z[i,t,s,h].getAttr("X")
+
     print "Objective: $%.2f" % m.objVal
+
+
+    #calculate total load
+    total_load = 0.0
+    for h in hours:
+        for s in seasons:
+            for t in years:
+                total_load += lc.load[h]
+    #these should match...
+    print "Total load (MWh): %s, Plant load (MWh): %s" % (total_load, total_plant_load)
+
 
 
 ############################################
 ####### make a horizontal bar chart ########
 ############################################
 
-##    #val = 3+10*rand(5)
-##    # the bar lengths
-##    val = [0.0]*6
-##    i = 0
-##    for j,t in pp_types.items():
-##        for h in hours :
-##            val[i] += load_totals[h,j]
-##        i+=1
-##    val = np.asarray(val[0:6])
-##    pos = arange(6)+.5    # the bar centers on the y axis
-##
-##    #labels
-##    labels = [None]*6
-##    for j,t in pp_types.items():
-##        labels[j] = pp_types[j]
-##
-##    labels = array(labels)
-##    figure(1)
-##    barh(pos,val, align='center')
-##    yticks(pos, labels)
-##    xlabel('MWh')
-##    title('Power plant fuel use')
-##    grid(True)
-##
-##    show()
+    #val = 3+10*rand(5)
+    # the bar lengths
+    val = [0.0]*6 #start at zero
+
+
+    #print val
+
+    #add up total production across entire planning period
+    for t in years:
+         for s in seasons:
+             for h in hours :
+                for j,k in pp_types.items():
+                    val[j] += load_totals[j,t,s,h]
+             print val
+    val = np.asarray(val[0:6]) #convert to a numpy array
+    print "Sum check (MWh): %s" % sum(val)
+    pos = arange(6)+.5    # the bar centers on the y axis
+
+    #labels
+    labels = [None]*6
+    for j,t in pp_types.items():
+        labels[j] = pp_types[j]
+
+    labels = array(labels)
+    figure(1)
+    barh(pos,val, align='center')
+    yticks(pos, labels)
+    xlabel('MWh')
+    title('Power plant fuel use')
+    grid(True)
+
+    show()
 
 
 except GurobiError:
